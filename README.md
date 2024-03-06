@@ -54,7 +54,34 @@ Check that the namespace has been created by running the below command. We shoul
 kubectl get ns 
 3. Create the cluster-role and cluster-role-binding.
 You will need to create an IAM role with permissions to Cloudwatch and S3, which will be used for our Fluent Bit service to talk to and send logs with.
+Ran this:
+Create Roles
+  eksctl create iamserviceaccount \
+      --name fluent-bit \
+      --namespace logging \
+      --cluster $CLUSTER \
+      --attach-policy-arn "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" \
+      --approve \
+      --override-existing-serviceaccounts
+  or
+  eksctl create iamserviceaccount \
+      --name fluent-bit \
+      --namespace logging \
+      --cluster $EKS_CLUSTER \
+      --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess \
+      --attach-policy-arn arn:aws:iam::aws:policy/CloudWatchFullAccess \
+      --attach-policy-arn "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" \
+      --approve --override-existing-serviceaccounts
 
+Update roles:
+  eksctl update iamserviceaccount \
+      --name fluent-bit \
+      --namespace logging \
+      --cluster $EKS_CLUSTER \
+      --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess \
+      --attach-policy-arn arn:aws:iam::aws:policy/CloudWatchFullAccess \
+      --attach-policy-arn "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" \
+      --approve
 Copy the below into cluster-role.yaml.
 
 Feel free to change the role names as you wish.
@@ -554,3 +581,27 @@ Remember to add lifecycle archival to your S3 objects! To save money
 Ensure your configmaps are correct with the right names and regions.
 Remember to check the service and pod logs to find any errors.
 Good luck!
+
+
+# Delete the sample application's pods
+
+kubectl delete deployment ordering-app
+
+# Delete Fluent bit daemonset, configmap, cluster role, crb
+
+kubectl delete daemonset fluentbit -n kube-system
+kubectl delete cm fluent-bit-config -n kube-system  
+kubectl delete clusterrole pod-log-reader  
+kubectl delete clusterrolebinding pod-log-crb
+
+# Delete the data in S3 bucket
+
+aws s3 rm s3://$S3_BUCKET/fluent-bit-logs/ --recursive
+
+# Delete CW Loggroup
+
+aws logs delete-log-group --log-group-name fluent-bit-cloudwatch-demo
+
+# delete ecr repository
+
+aws ecr delete-repository --repository-name logging-demo-app --force
