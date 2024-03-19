@@ -26,7 +26,90 @@ data:
     @INCLUDE dataplane-log.conf
     @INCLUDE host-log.conf
 
-  application-log.conf: "[INPUT]\n    Name                tail\n    Tag                 application.*\n    Exclude_Path        /var/log/containers/cloudwatch-agent*, /var/log/containers/fluent-bit*, /var/log/containers/aws-node*, /var/log/containers/kube-proxy*, /var/log/containers/cert-manager*, /var/log/containers/efs*, /var/log/containers/csi*, /var/log/containers/secrets*, /var/log/containers/istio*, /var/log/containers/external*, /var/log/containers/coredns*, /var/log/containers/cluster*, /var/log/containers/helm*, /var/log/containers/kustomize*, /var/log/containers/notification*\n    Path                /var/log/containers/*.log\n    multiline.parser    docker, cri\n    DB                  /var/fluent-bit/state/flb_container.db\n    Mem_Buf_Limit       50MB\n    Skip_Long_Lines     On\n    Refresh_Interval    10\n    Rotate_Wait         30\n    storage.type        filesystem\n    Read_from_Head      ${READ_FROM_HEAD}\n    #magic___^_^___line\n[INPUT]\n    Name                tail\n    Tag                 application.*\n    Path                /var/log/containers/fluent-bit*\n    multiline.parser    docker, cri\n    DB                  /var/fluent-bit/state/flb_log.db\n    Mem_Buf_Limit       5MB\n    Skip_Long_Lines     On\n    Refresh_Interval    10\n    Read_from_Head      ${READ_FROM_HEAD}\n    #magic___^_^___line\n[INPUT]    \n    Name                tail \n    Tag                 application.*\n    Path                /var/log/containers/cloudwatch-agent*\n    multiline.parser    docker, cri   \n    DB                  /var/fluent-bit/state/flb_cwagent.db    \n    Mem_Buf_Limit       5MB\n    Skip_Long_Lines     On\n    Refresh_Interval    10\n    Read_from_Head      ${READ_FROM_HEAD}\n    #magic___^_^___line\n[INPUT]\n    Name                tail\n    Path                /var/log/shiny-server/*.log\n    Parser              json\n    Tag                 shiny-server-logs\n    #magic___^_^___line\n    #magic___^_^___line\n[FILTER]\n    Name                kubernetes   \n    Match               application.*\n    Kube_URL            https://kubernetes.default.svc:443\n    Kube_Tag_Prefix     application.var.log.containers.\n    Merge_Log           On\n    Merge_Log_Key       log_processed\n    K8S-Logging.Parser  On   \n    K8S-Logging.Exclude Off\n    Labels              Off\n    Annotations         Off\n    Use_Kubelet         On\n    Kubelet_Port        10250\n    Buffer_Size         0\n    #magic___^_^___line\n[OUTPUT]\n    Name                cloudwatch_logs\n    Match               host.*\n    region              ${AWS_REGION}\n    log_group_name      /aws/containerinsights/${CLUSTER_NAME}/application\n    log_stream_prefix   ${HOST_NAME}-\n    auto_create_group   true\n    extra_user_agent    container-insights\n    #magic___^_^___line\n[OUTPUT]   \n    Name                  s3\n    Match                 application.*\n    bucket                dev-ai-common\n    region                ${AWS_REGION}\n    total_file_size       250M\n    compression           gzip\n    s3_key_format         /fluent-bit-logs/$TAG/%Y/%m/%d/%H_%M_%S.gz\n    static_file_path      On\n    #magic___^_^___line\n"
+  application-log.conf: |
+    [INPUT]
+        Name                tail
+        Tag                 application.*
+        Exclude_Path        /var/log/containers/cloudwatch-agent*, /var/log/containers/fluent-bit*, /var/log/containers/aws-node*, /var/log/containers/kube-proxy*, /var/log/containers/cert-manager*, /var/log/containers/efs*, /var/log/containers/csi*, /var/log/containers/secrets*, /var/log/containers/istio*, /var/log/containers/external*, /var/log/containers/coredns*, /var/log/containers/cluster*, /var/log/containers/helm*, /var/log/containers/kustomize*, /var/log/containers/notification*
+        Path                /var/log/containers/*.log
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_container.db
+        Mem_Buf_Limit       50MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Rotate_Wait         30
+        storage.type        filesystem
+        Read_from_Head      ${READ_FROM_HEAD}
+
+    [INPUT]
+        Name                tail
+        Tag                 application.*
+        Path                /var/log/containers/fluent-bit*
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_log.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      ${READ_FROM_HEAD}
+
+    [INPUT]
+        Name                tail
+        Tag                 application.*
+        Path                /var/log/containers/cloudwatch-agent*
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_cwagent.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      ${READ_FROM_HEAD}
+
+    [INPUT]
+        Name                tail
+        Path                /var/log/shiny-server/*.log
+        Parser              shiny_log_parser
+        Tag                 shiny-server-logs
+
+    [FILTER]
+        Name                kubernetes
+        Match               application.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_Tag_Prefix     application.var.log.containers.
+        Merge_Log           On
+        Merge_Log_Key       log_processed
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude Off
+        Labels              Off
+        Annotations         Off
+        Use_Kubelet         On
+        Kubelet_Port        10250
+        Buffer_Size         0
+
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               host.*
+        region              ${AWS_REGION}
+        log_group_name      /aws/containerinsights/${CLUSTER_NAME}/application
+        log_stream_prefix   ${HOST_NAME}-
+        auto_create_group   true
+        extra_user_agent    container-insights
+
+    [OUTPUT]
+        Name                  s3
+        Match                 application.*
+        bucket                dev-ai-common
+        region                ${AWS_REGION}
+        total_file_size       250M
+        compression           gzip
+        s3_key_format         /fluent-bit-logs/$TAG/%Y/%m/%d/%H_%M_%S.gz
+        static_file_path      On
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               shiny-server-logs
+        region              ${AWS_REGION}
+        log_group_name      /aws/containerinsights/${CLUSTER_NAME}/shiny-server
+        log_stream_prefix   shiny-server-
+        auto_create_group   true
+
   dataplane-log.conf: |
     [INPUT]
         Name                systemd
@@ -152,6 +235,13 @@ data:
         Regex               ^(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$
         Time_Key            time
         Time_Format         %b %d %H:%M:%S
+
+    [PARSER]
+        Name                shiny_log_parser
+        Format              regex
+        Regex               ^(?<level>[^ ]*) \[(?<time>[^\]]*)\] (?<message>.*)
+        Time_Key            time
+        Time_Format         %Y-%m-%d %H:%M:%S
 
     [PARSER]
         Name                container_firstline

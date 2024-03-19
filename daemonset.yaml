@@ -90,6 +90,9 @@ spec:
         - name: dmesg
           mountPath: /var/log/dmesg
           readOnly: true
+        - name: shinylogs
+          mountPath: /var/log/shiny-server
+          readOnly: true
       terminationGracePeriodSeconds: 10
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -112,6 +115,9 @@ spec:
       - name: dmesg
         hostPath:
           path: /var/log/dmesg
+      - name: shinylogs
+        hostPath:
+          path: /var/log/shiny-server
       tolerations:
       - key: node-role.kubernetes.io/master
         operator: Exists
